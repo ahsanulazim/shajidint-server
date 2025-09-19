@@ -118,12 +118,12 @@ async function run() {
       }
     });
 
-    //Update user image by email
+    //Upload user image by email
 
     const storage = multer.memoryStorage();
     const upload = multer({ storage });
 
-    app.put("/Users/:email", upload.single("profilePic"), async (req, res) => {
+    app.put("/users/:email", upload.single("profilePic"), async (req, res) => {
       const email = req.params.email;
       const imageBuffer = req.file?.buffer;
 
@@ -137,7 +137,7 @@ async function run() {
         // If there's a previous profile picture then remove it before uploading
         if (existingUser.deleteUrl) {
           try {
-            await fetch(existingUser.deleteUrl, { method: "GET" });
+            await fetch(existingUser.deleteUrl);
             console.log("Old profile picture deleted from ImgBB");
           } catch (err) {
             console.warn("Failed to delete old image:", err.message);
@@ -150,41 +150,43 @@ async function run() {
         if (imageBuffer) {
           const base64Image = imageBuffer.toString("base64");
 
+          const formData = new URLSearchParams();
+          formData.append("image", base64Image);
+
+
           const imgbbRes = await fetch(
             `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
             {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ image: base64Image }),
             }
           );
 
           const imgbbData = await imgbbRes.json();
+
+          if (!imgbbData.success) {
+            return res.status(500).send({ success: false, message: "ImgBB upload failed" });
+          }
+
+
           imageUrl = imgbbData.data.url;
           deleteUrl = imgbbData.data.delete_url; // Saving for deleting in the future
         }
 
         // Updating latest image link and previous image link
-        const updateDoc = {
-          $set: {
-            profilePic: imageUrl,
-            deleteUrl: deleteUrl,
-            updatedAt: new Date(),
-          },
-        };
+        await userCollection.updateOne(
+          { email },
+          { $set: { profilePic: imageUrl, deleteUrl, updatedAt: new Date() } }
+        );
 
-        const result = await userCollection.updateOne({ email }, updateDoc);
 
-        if (result.modifiedCount > 0) {
-          res.status(200).send({ success: true, profilePic: imageUrl });
-        } else {
-          res.status(500).send({ success: false, message: "Profile update failed" });
-        }
+        res.status(200).send({ success: true, profilePic: imageUrl });
       } catch (error) {
         console.error("Profile update failed:", error);
         res.status(500).send({ success: false, error: error.message });
       }
     });
+
 
 
     //delete an user
