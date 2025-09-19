@@ -119,66 +119,57 @@ async function run() {
     });
 
     //Upload user image by email
-
     const storage = multer.memoryStorage();
     const upload = multer({ storage });
 
-    app.put("/users/:email", upload.single("profilePic"), async (req, res) => {
+    app.put("/users/:email/image", upload.single("profilePic"), async (req, res) => {
       const email = req.params.email;
       const imageBuffer = req.file?.buffer;
 
       try {
-        // User search
         const existingUser = await userCollection.findOne({ email });
         if (!existingUser) {
           return res.status(404).send({ success: false, message: "User not found" });
         }
 
-        // If there's a previous profile picture then remove it before uploading
+        // delete old image if exists
         if (existingUser.deleteUrl) {
           try {
-            await fetch(existingUser.deleteUrl);
-            console.log("Old profile picture deleted from ImgBB");
+            const delRes = await fetch(existingUser.deleteUrl);
+            if (!delRes.ok) throw new Error("Delete failed");
           } catch (err) {
             console.warn("Failed to delete old image:", err.message);
           }
         }
 
-        // Uploading new profile picture
         let imageUrl = "";
         let deleteUrl = "";
+
         if (imageBuffer) {
           const base64Image = imageBuffer.toString("base64");
 
+          // IMPORTANT: use URLSearchParams body, not JSON
           const formData = new URLSearchParams();
           formData.append("image", base64Image);
 
-
           const imgbbRes = await fetch(
             `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
-            {
-              method: "POST",
-              body: JSON.stringify({ image: base64Image }),
-            }
+            { method: "POST", body: formData }
           );
 
           const imgbbData = await imgbbRes.json();
-
-          if (!imgbbData.success) {
+          if (!imgbbData?.success) {
             return res.status(500).send({ success: false, message: "ImgBB upload failed" });
           }
 
-
           imageUrl = imgbbData.data.url;
-          deleteUrl = imgbbData.data.delete_url; // Saving for deleting in the future
+          deleteUrl = imgbbData.data.delete_url;
         }
 
-        // Updating latest image link and previous image link
         await userCollection.updateOne(
           { email },
           { $set: { profilePic: imageUrl, deleteUrl, updatedAt: new Date() } }
         );
-
 
         res.status(200).send({ success: true, profilePic: imageUrl });
       } catch (error) {
@@ -186,7 +177,6 @@ async function run() {
         res.status(500).send({ success: false, error: error.message });
       }
     });
-
 
 
     //delete an user
