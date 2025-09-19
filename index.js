@@ -1,0 +1,233 @@
+import express from "express";
+import cors from "cors";
+import multer from "multer";
+import admin from "./firebaseAdmin.js";
+import { MongoClient, ServerApiVersion } from "mongodb";
+import dotenv from "dotenv";
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 5000;
+
+// use middleware
+
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://shajidint.vercel.app",
+];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  })
+);
+
+app.use(express.json());
+
+const uri = process.env.MONGODB_URI;
+
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+});
+async function run() {
+  try {
+    // Connect the client to the server	(optional starting in v4.7)
+    await client.connect();
+
+    //My Code Starts
+
+    //MongoDB Collection
+    const userCollection = client.db("shajidint").collection("Users");
+
+    // add new user to mongo and firebase
+
+    app.post("/users", async (req, res) => {
+      const { name, email, phone, role, designation, password } = req.body;
+
+      try {
+        // Create user in Firebase Auth
+        const userRecord = await admin.auth().createUser({
+          email,
+          password,
+          displayName: name,
+        });
+
+        // Save metadata in MongoDB
+        const user = {
+          name,
+          email,
+          phone,
+          role,
+          designation,
+        };
+
+        const result = await userCollection.insertOne(user);
+
+        res.status(200).send({
+          success: true,
+        });
+      } catch (error) {
+        res.status(500).send({ success: false });
+      }
+    });
+
+    //find a user
+    app.get("/loginuser/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await userCollection.findOne({ email: email });
+      res.send(user);
+    });
+
+    // get all users information
+    app.get("/users", async (req, res) => {
+      const user = await userCollection.find().toArray();
+      res.send(user);
+    });
+
+    // Update user data by email
+    app.put("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const updatedData = req.body;
+
+      try {
+        const result = await userCollection.updateOne(
+          { email: email },
+          { $set: updatedData }
+        );
+
+        if (result.modifiedCount > 0) {
+          res
+            .status(200)
+            .send({ success: true, message: "User updated successfully" });
+        } else {
+          res.status(404).send({
+            success: false,
+            message: "User not found or no changes made",
+          });
+        }
+      } catch (error) {
+        console.error("Update error:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Internal server error" });
+      }
+    });
+
+    //Update user image by email
+
+    const storage = multer.memoryStorage();
+    const upload = multer({ storage });
+
+    app.put("/Users/:email", upload.single("profilePic"), async (req, res) => {
+      const email = req.params.email;
+      const imageBuffer = req.file?.buffer;
+
+      try {
+        // User search
+        const existingUser = await userCollection.findOne({ email });
+        if (!existingUser) {
+          return res.status(404).send({ success: false, message: "User not found" });
+        }
+
+        // If there's a previous profile picture then remove it before uploading
+        if (existingUser.deleteUrl) {
+          try {
+            await fetch(existingUser.deleteUrl, { method: "GET" });
+            console.log("Old profile picture deleted from ImgBB");
+          } catch (err) {
+            console.warn("Failed to delete old image:", err.message);
+          }
+        }
+
+        // Uploading new profile picture
+        let imageUrl = "";
+        let deleteUrl = "";
+        if (imageBuffer) {
+          const base64Image = imageBuffer.toString("base64");
+
+          const imgbbRes = await fetch(
+            `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ image: base64Image }),
+            }
+          );
+
+          const imgbbData = await imgbbRes.json();
+          imageUrl = imgbbData.data.url;
+          deleteUrl = imgbbData.data.delete_url; // Saving for deleting in the future
+        }
+
+        // Updating latest image link and previous image link
+        const updateDoc = {
+          $set: {
+            profilePic: imageUrl,
+            deleteUrl: deleteUrl,
+            updatedAt: new Date(),
+          },
+        };
+
+        const result = await userCollection.updateOne({ email }, updateDoc);
+
+        if (result.modifiedCount > 0) {
+          res.status(200).send({ success: true, profilePic: imageUrl });
+        } else {
+          res.status(500).send({ success: false, message: "Profile update failed" });
+        }
+      } catch (error) {
+        console.error("Profile update failed:", error);
+        res.status(500).send({ success: false, error: error.message });
+      }
+    });
+
+
+    //delete an user
+
+    app.delete("/users/:email", async (req, res) => {
+      const email = req.params.email;
+
+      try {
+        // 1. Delete from Firebase Auth
+        const userRecord = await admin.auth().getUserByEmail(email);
+        await admin.auth().deleteUser(userRecord.uid);
+
+        // 2. Delete from MongoDB
+        const result = await userCollection.deleteOne({ email });
+
+        if (result.deletedCount > 0) {
+          res.send({ success: true, message: "User deleted successfully" });
+        } else {
+          res.send({ success: false, message: "User not found in MongoDB" });
+        }
+      } catch (error) {
+        console.error("Delete error:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to delete user" });
+      }
+    });
+
+    //My Code Ends
+    // Send a ping to confirm a successful connection
+    await client.db("admin").command({ ping: 1 });
+    app.get("/", (req, res) => {
+      res.send("Hello World!");
+    });
+
+    app.listen(port, () => {
+      console.log(`Example app listening on port ${port}`);
+    });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
+  } finally {
+    // Ensures that the client will close when you finish/error
+  }
+}
+run().catch(console.dir);
