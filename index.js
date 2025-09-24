@@ -248,6 +248,15 @@ async function run() {
       res.send(msgs);
     });
 
+    //Find one Massage
+    app.get("/msgs/:_id", async (req, res) => {
+      const _id = req.params._id;
+      const result = await msgCollection.findOne({
+        _id: new ObjectId(_id),
+      });
+      res.send(result);
+    });
+
     //Delete a massage
 
     app.delete("/msgs/:_id", async (req, res) => {
