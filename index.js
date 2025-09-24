@@ -224,6 +224,10 @@ async function run() {
           phone,
           company,
           query,
+          sendDate: new Date().toLocaleString("en-BD", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          }),
         };
 
         const result = await msgCollection.insertOne(inquiry);
