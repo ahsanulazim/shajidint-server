@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import admin from "./firebaseAdmin.js";
-import { MongoClient, ServerApiVersion } from "mongodb";
+import { MongoClient, ObjectId, ServerApiVersion } from "mongodb";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -247,7 +247,7 @@ async function run() {
 
     app.delete("/msgs/:_id", async (req, res) => {
       const _id = req.params._id;
-      const msg = { _id: Object(_id) };
+      const msg = { _id: ObjectId(_id) };
 
       try {
         // Delete from MongoDB
