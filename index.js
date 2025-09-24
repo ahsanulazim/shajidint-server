@@ -243,6 +243,28 @@ async function run() {
       res.send(msgs);
     });
 
+    //Delete a massage
+
+    app.delete("/msgs/:_id", async (req, res) => {
+      const _id = req.params._id;
+
+      try {
+        // Delete from MongoDB
+        const result = await msgCollection.deleteOne({ _id });
+
+        if (result.deletedCount > 0) {
+          res.send({ success: true, message: "Massage deleted successfully" });
+        } else {
+          res.send({ success: false, message: "Massage not found in MongoDB" });
+        }
+      } catch (error) {
+        console.error("Delete error:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to delete Massage" });
+      }
+    });
+
     //My Code Ends
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
