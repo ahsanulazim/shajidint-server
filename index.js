@@ -236,6 +236,13 @@ async function run() {
       }
     });
 
+    // get all Massages
+
+    app.get("/msgs", async (req, res) => {
+      const msgs = await msgCollection.find().toArray();
+      res.send(msgs);
+    });
+
     //My Code Ends
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
