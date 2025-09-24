@@ -247,11 +247,12 @@ async function run() {
 
     app.delete("/msgs/:_id", async (req, res) => {
       const _id = req.params._id;
-      const msg = { _id: new ObjectId(_id) };
 
       try {
         // Delete from MongoDB
-        const result = await msgCollection.deleteOne({ msg });
+        const result = await msgCollection.deleteOne({
+          _id: new ObjectId(_id),
+        });
 
         if (result.deletedCount > 0) {
           res.send({ success: true, message: "Massage deleted successfully" });
