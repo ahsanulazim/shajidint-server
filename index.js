@@ -43,6 +43,7 @@ async function run() {
 
     //MongoDB Collection
     const userCollection = client.db("shajidint").collection("Users");
+    const msgCollection = client.db("shajidint").collection("Msgs");
 
     // add new user to mongo and firebase
 
@@ -122,62 +123,69 @@ async function run() {
     const storage = multer.memoryStorage();
     const upload = multer({ storage });
 
-    app.put("/users/:email/image", upload.single("profilePic"), async (req, res) => {
-      const email = req.params.email;
-      const imageBuffer = req.file?.buffer;
+    app.put(
+      "/users/:email/image",
+      upload.single("profilePic"),
+      async (req, res) => {
+        const email = req.params.email;
+        const imageBuffer = req.file?.buffer;
 
-      try {
-        const existingUser = await userCollection.findOne({ email });
-        if (!existingUser) {
-          return res.status(404).send({ success: false, message: "User not found" });
-        }
-
-        // delete old image if exists
-        if (existingUser.deleteUrl) {
-          try {
-            const delRes = await fetch(existingUser.deleteUrl);
-            if (!delRes.ok) throw new Error("Delete failed");
-          } catch (err) {
-            console.warn("Failed to delete old image:", err.message);
+        try {
+          const existingUser = await userCollection.findOne({ email });
+          if (!existingUser) {
+            return res
+              .status(404)
+              .send({ success: false, message: "User not found" });
           }
-        }
 
-        let imageUrl = "";
-        let deleteUrl = "";
+          // delete old image if exists
+          if (existingUser.deleteUrl) {
+            try {
+              const delRes = await fetch(existingUser.deleteUrl);
+              if (!delRes.ok) throw new Error("Delete failed");
+            } catch (err) {
+              console.warn("Failed to delete old image:", err.message);
+            }
+          }
 
-        if (imageBuffer) {
-          const base64Image = imageBuffer.toString("base64");
+          let imageUrl = "";
+          let deleteUrl = "";
 
-          // IMPORTANT: use URLSearchParams body, not JSON
-          const formData = new URLSearchParams();
-          formData.append("image", base64Image);
+          if (imageBuffer) {
+            const base64Image = imageBuffer.toString("base64");
 
-          const imgbbRes = await fetch(
-            `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
-            { method: "POST", body: formData }
+            // IMPORTANT: use URLSearchParams body, not JSON
+            const formData = new URLSearchParams();
+            formData.append("image", base64Image);
+
+            const imgbbRes = await fetch(
+              `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
+              { method: "POST", body: formData }
+            );
+
+            const imgbbData = await imgbbRes.json();
+            if (!imgbbData?.success) {
+              return res
+                .status(500)
+                .send({ success: false, message: "ImgBB upload failed" });
+            }
+
+            imageUrl = imgbbData.data.url;
+            deleteUrl = imgbbData.data.delete_url;
+          }
+
+          await userCollection.updateOne(
+            { email },
+            { $set: { profilePic: imageUrl, deleteUrl, updatedAt: new Date() } }
           );
 
-          const imgbbData = await imgbbRes.json();
-          if (!imgbbData?.success) {
-            return res.status(500).send({ success: false, message: "ImgBB upload failed" });
-          }
-
-          imageUrl = imgbbData.data.url;
-          deleteUrl = imgbbData.data.delete_url;
+          res.status(200).send({ success: true, profilePic: imageUrl });
+        } catch (error) {
+          console.error("Profile update failed:", error);
+          res.status(500).send({ success: false, error: error.message });
         }
-
-        await userCollection.updateOne(
-          { email },
-          { $set: { profilePic: imageUrl, deleteUrl, updatedAt: new Date() } }
-        );
-
-        res.status(200).send({ success: true, profilePic: imageUrl });
-      } catch (error) {
-        console.error("Profile update failed:", error);
-        res.status(500).send({ success: false, error: error.message });
       }
-    });
-
+    );
 
     //delete an user
 
@@ -202,6 +210,29 @@ async function run() {
         res
           .status(500)
           .send({ success: false, message: "Failed to delete user" });
+      }
+    });
+
+    //Post a massage
+
+    app.post("/msg", async (req, res) => {
+      const { name, email, phone, company, query } = req.body;
+      try {
+        const inquiry = {
+          name,
+          email,
+          phone,
+          company,
+          query,
+        };
+
+        const result = await msgCollection.insertOne(inquiry);
+
+        res.status(200).send({
+          success: true,
+        });
+      } catch (error) {
+        res.status(500).send({ success: false });
       }
     });
 
