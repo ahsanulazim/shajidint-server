@@ -247,7 +247,7 @@ async function run() {
 
     app.delete("/msgs/:_id", async (req, res) => {
       const _id = req.params._id;
-      const msg = { _id: ObjectId(_id) };
+      const msg = { _id: new ObjectId(_id) };
 
       try {
         // Delete from MongoDB
