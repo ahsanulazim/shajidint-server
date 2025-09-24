@@ -225,6 +225,7 @@ async function run() {
           company,
           query,
           sendDate: new Date().toLocaleString("en-BD", {
+            timeZone: "Asia/Dhaka",
             dateStyle: "medium",
             timeStyle: "short",
           }),
