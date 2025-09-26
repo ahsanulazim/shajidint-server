@@ -224,6 +224,7 @@ async function run() {
           phone,
           company,
           query,
+          sendDateFormatted: new Date(), // store as real Date object,
           sendDate: new Date().toLocaleString("en-BD", {
             timeZone: "Asia/Dhaka",
             dateStyle: "medium",
@@ -272,9 +273,6 @@ async function run() {
             }
           },
           {
-            $sort: { "_id.year": -1, "_id.month": -1, "_id.day": -1 }
-          },
-          {
             $project: {
               date: {
                 $dateFromParts: {
@@ -286,7 +284,8 @@ async function run() {
               count: 1,
               _id: 0
             }
-          }
+          },
+          { $sort: { date: 1 } }
         ]).toArray();
 
         res.send(stats);
