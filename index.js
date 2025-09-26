@@ -224,7 +224,7 @@ async function run() {
           phone,
           company,
           query,
-          sendDateFormatted: new Date(), // store as real Date object,
+          sendDateFormatted: new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" })),
           sendDate: new Date().toLocaleString("en-BD", {
             timeZone: "Asia/Dhaka",
             dateStyle: "medium",
