@@ -224,7 +224,9 @@ async function run() {
           phone,
           company,
           query,
-          sendDateFormatted: new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" })),
+          sendDateFormatted: new Date(
+            new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" })
+          ),
           sendDate: new Date().toLocaleString("en-BD", {
             timeZone: "Asia/Dhaka",
             dateStyle: "medium",
@@ -261,36 +263,59 @@ async function run() {
     //Get All Massages for charts
     app.get("/msg-stats", async (req, res) => {
       try {
-        const stats = await msgCollection.aggregate([
-          {
-            $group: {
-              _id: {
-                year: { $year: "$sendDateFormatted" },
-                month: { $month: "$sendDateFormatted" },
-                day: { $dayOfMonth: "$sendDateFormatted" }
+        const stats = await msgCollection
+          .aggregate([
+            {
+              $group: {
+                _id: {
+                  year: { $year: "$sendDateFormatted" },
+                  month: { $month: "$sendDateFormatted" },
+                  day: { $dayOfMonth: "$sendDateFormatted" },
+                },
+                count: { $sum: 1 },
               },
-              count: { $sum: 1 }
-            }
-          },
-          {
-            $project: {
-              date: {
-                $dateFromParts: {
-                  year: "$_id.year",
-                  month: "$_id.month",
-                  day: "$_id.day"
-                }
+            },
+            {
+              $project: {
+                date: {
+                  $dateFromParts: {
+                    year: "$_id.year",
+                    month: "$_id.month",
+                    day: "$_id.day",
+                  },
+                },
+                count: 1,
+                _id: 0,
               },
-              count: 1,
-              _id: 0
-            }
-          },
-          { $sort: { date: 1 } }
-        ]).toArray();
+            },
+            { $sort: { date: 1 } },
+          ])
+          .toArray();
 
         res.send(stats);
       } catch (error) {
-        res.status(500).send({ success: false, message: "Failed to fetch stats" });
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to fetch stats" });
+      }
+    });
+
+    //1 Month Massage count for stats card
+    app.get("/msg-count-30days", async (req, res) => {
+      try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const count = await msgCollection.countDocuments({
+          sendDateFormatted: { $gte: thirtyDaysAgo },
+        });
+
+        res.send({ count });
+      } catch (error) {
+        console.error("Count error:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to count messages" });
       }
     });
 
