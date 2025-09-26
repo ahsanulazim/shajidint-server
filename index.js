@@ -257,6 +257,44 @@ async function run() {
       res.send(result);
     });
 
+    //Get All Massages for charts
+    app.get("/msg-stats", async (req, res) => {
+      try {
+        const stats = await msgCollection.aggregate([
+          {
+            $group: {
+              _id: {
+                year: { $year: "$sendDate" },
+                month: { $month: "$sendDate" },
+                day: { $dayOfMonth: "$sendDate" }
+              },
+              count: { $sum: 1 }
+            }
+          },
+          {
+            $sort: { "_id.year": -1, "_id.month": -1, "_id.day": -1 }
+          },
+          {
+            $project: {
+              date: {
+                $dateFromParts: {
+                  year: "$_id.year",
+                  month: "$_id.month",
+                  day: "$_id.day"
+                }
+              },
+              count: 1,
+              _id: 0
+            }
+          }
+        ]).toArray();
+
+        res.send(stats);
+      } catch (error) {
+        res.status(500).send({ success: false, message: "Failed to fetch stats" });
+      }
+    });
+
     //Delete a massage
 
     app.delete("/msgs/:_id", async (req, res) => {
