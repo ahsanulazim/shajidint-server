@@ -265,9 +265,9 @@ async function run() {
           {
             $group: {
               _id: {
-                year: { $year: "$sendDate" },
-                month: { $month: "$sendDate" },
-                day: { $dayOfMonth: "$sendDate" }
+                year: { $year: "$sendDateFormatted" },
+                month: { $month: "$sendDateFormatted" },
+                day: { $dayOfMonth: "$sendDateFormatted" }
               },
               count: { $sum: 1 }
             }
