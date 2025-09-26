@@ -301,21 +301,45 @@ async function run() {
     });
 
     //1 Month Massage count for stats card
-    app.get("/msg-count-30days", async (req, res) => {
+    app.get("/msg-stats-summary", async (req, res) => {
       try {
+        const today = new Date();
         const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        thirtyDaysAgo.setDate(today.getDate() - 30);
 
-        const count = await msgCollection.countDocuments({
+        const sixtyDaysAgo = new Date();
+        sixtyDaysAgo.setDate(today.getDate() - 60);
+
+        const currentCount = await msgCollection.countDocuments({
           sendDateFormatted: { $gte: thirtyDaysAgo },
         });
 
-        res.send({ count });
+        const previousCount = await msgCollection.countDocuments({
+          sendDateFormatted: {
+            $gte: sixtyDaysAgo,
+            $lt: thirtyDaysAgo,
+          },
+        });
+
+        const percentChange =
+          previousCount === 0
+            ? currentCount > 0
+              ? 100
+              : 0
+            : Math.round(
+                ((currentCount - previousCount) / previousCount) * 100
+              );
+
+        res.send({
+          currentCount,
+          previousCount,
+          percentChange,
+        });
       } catch (error) {
-        console.error("Count error:", error);
+        console.error("Stats summary error:", error);
         res
           .status(500)
-          .send({ success: false, message: "Failed to count messages" });
+          .send({ success: false, message: "Failed to fetch stats summary" });
       }
     });
 
