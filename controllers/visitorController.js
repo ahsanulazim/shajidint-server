@@ -31,3 +31,28 @@ export const getVisitorStats = async (req, res) => {
 
   res.json({ daily, monthly, yearly, deviceBreakdown });
 };
+
+//Monthy Visitor Compare
+
+export const monthlyVisitor = async (req, res) => {
+  const now = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" })
+  );
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  const [currentCount, lastCount] = await Promise.all([
+    visitorCollection.countDocuments({
+      visitedAt: { $gte: currentMonthStart, $lt: nextMonthStart },
+    }),
+    visitorCollection.countDocuments({
+      visitedAt: { $gte: lastMonthStart, $lt: currentMonthStart },
+    }),
+  ]);
+
+  const percentChange =
+    lastCount === 0 ? 100 : ((currentCount - lastCount) / lastCount) * 100;
+
+  res.json({ currentCount, lastCount, percentChange });
+};
