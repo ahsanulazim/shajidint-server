@@ -6,8 +6,16 @@ const visitorCollection = client.db("shajidint").collection("Visitors");
 // Track visit
 export const trackVisit = async (req, res) => {
   try {
-    const ua = new UAParser(req.headers["user-agent"]);
-    const deviceType = ua.device.type || "desktop"; // default desktop
+    const userAgent = req.headers["user-agent"];
+    if (!userAgent) {
+      console.warn("Missing user-agent header");
+      return res
+        .status(400)
+        .send({ success: false, message: "Missing user-agent" });
+    }
+
+    const ua = new UAParser(userAgent);
+    const deviceType = ua.device.type || "desktop";
     const browser = ua.browser.name || "unknown";
 
     const now = new Date();
@@ -21,11 +29,15 @@ export const trackVisit = async (req, res) => {
       day: now.getDate(),
     };
 
-    await visitorCollection.insertOne(doc);
+    console.log("Visitor tracking doc:", doc);
+
+    const result = await visitorCollection.insertOne(doc);
+    console.log("MongoDB insert result:", result);
+
     res.send({ success: true });
   } catch (err) {
-    console.error("Visitor track error:", err);
-    res.status(500).send({ success: false });
+    console.error("Visitor track error:", err.message);
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
