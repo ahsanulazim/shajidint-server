@@ -1,4 +1,5 @@
 import { getRange } from "../utils/dateRange.js";
+import client from "../config/database.js";
 
 const visitorCollection = client.db("shajidint").collection("visitor");
 // Track visit
