@@ -20,12 +20,21 @@ export const getVisitorStats = async (req, res) => {
     visitorCollection.countDocuments({ visitedAt: getRange("monthly") }),
     visitorCollection.countDocuments({ visitedAt: getRange("yearly") }),
     visitorCollection
-      .aggregate([{ $group: { _id: "$name", value: { $sum: 1 } } }])
+      .aggregate([
+        {
+          $group: {
+            _id: "$_id",
+            name: { $first: "$name" },
+            value: { $sum: 1 },
+          },
+        },
+      ])
       .toArray(),
   ]);
 
   const deviceBreakdown = rawBreakdown.map((item) => ({
-    name: item._id,
+    id: item._id,
+    name: item.name,
     value: item.value,
   }));
 
