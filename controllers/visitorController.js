@@ -20,7 +20,7 @@ export const getVisitorStats = async (req, res) => {
     visitorCollection.countDocuments({ visitedAt: getRange("monthly") }),
     visitorCollection.countDocuments({ visitedAt: getRange("yearly") }),
     visitorCollection
-      .aggregate([{ $group: { _id: "$name", value: { $sum: 1 } } }])
+      .aggregate([{ $group: { name: "$name", value: { $sum: 1 } } }])
       .toArray(),
   ]);
 
