@@ -37,7 +37,9 @@ export const trackVisit = async (req, res) => {
     res.send({ success: true });
   } catch (err) {
     console.error("Visitor track error:", err.message);
-    res.status(500).send({ success: false, message: err.message });
+    res
+      .status(500)
+      .send({ success: false, message: "visitor Error ," + err.message });
   }
 };
 
