@@ -15,14 +15,19 @@ export const trackVisit = async (req, res) => {
 
 // Get visitor stats
 export const getVisitorStats = async (req, res) => {
-  const [daily, monthly, yearly, deviceBreakdown] = await Promise.all([
+  const [daily, monthly, yearly, rawBreakdown] = await Promise.all([
     visitorCollection.countDocuments({ visitedAt: getRange("daily") }),
     visitorCollection.countDocuments({ visitedAt: getRange("monthly") }),
     visitorCollection.countDocuments({ visitedAt: getRange("yearly") }),
     visitorCollection
-      .aggregate([{ $group: { name: "$name", value: { $sum: 1 } } }])
+      .aggregate([{ $group: { _id: "$name", value: { $sum: 1 } } }])
       .toArray(),
   ]);
+
+  const deviceBreakdown = rawBreakdown.map((item) => ({
+    name: item._id,
+    value: item.value,
+  }));
 
   res.json({ daily, monthly, yearly, deviceBreakdown });
 };
