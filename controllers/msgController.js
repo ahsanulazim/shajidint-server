@@ -33,7 +33,10 @@ export const createMsg = async (req, res) => {
 
 // Get all messages
 export const getMsgs = async (req, res) => {
-  const msgs = await msgCollection.find().toArray();
+  const msgs = await msgCollection
+    .find()
+    .sort({ sendDateFormatted: -1 })
+    .toArray();
   res.send(msgs);
 };
 
