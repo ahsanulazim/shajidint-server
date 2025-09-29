@@ -132,3 +132,19 @@ export const deleteMsg = async (req, res) => {
     res.status(500).send({ success: false, message: "Failed to delete msg" });
   }
 };
+
+//Mask As Read Massage
+
+export const msgRead = async (req, res) => {
+  const { massage } = req.params;
+  try {
+    await msgCollection.updateOne(
+      { _id: new ObjectId(massage) },
+      { $set: { read: true } }
+    );
+    res.send({ success: true });
+  } catch (error) {
+    console.error("Mark as read error:", error);
+    res.status(500).send({ success: false });
+  }
+};
