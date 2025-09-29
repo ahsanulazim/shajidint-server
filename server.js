@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import visitorRoutes from "./routes/visitorRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import msgRoutes from "./routes/msgRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 import client from "./config/database.js";
 
 dotenv.config();
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use("/users", userRoutes);
 app.use("/msgs", msgRoutes);
 app.use("/visitors", visitorRoutes);
+app.use("/notifications", notificationRoutes);
 
 app.get("/", (req, res) => res.send("Hello World!"));
 
